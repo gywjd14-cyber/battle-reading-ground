@@ -548,7 +548,7 @@ function renderMyJournalSection() {
 
     const xp = (reads - reviewsCount) * 100 + (reviewsCount * 300);
     let tier = 'bronze', tierLabel = '브론즈 생존자';
-    if (xp >= 2500) { tier = 'chicken'; tierLabel = '★치킨 마스터★'; }
+    if (xp >= 2500) { tier = 'chicken'; tierLabel = '★리딩 마스터★'; }
     else if (xp >= 1500) { tier = 'diamond'; tierLabel = '다이아몬드 독서왕'; }
     else if (xp >= 1000) { tier = 'platinum'; tierLabel = '플래티넘 스나이퍼'; }
     else if (xp >= 600) { tier = 'gold'; tierLabel = '골드 수집가'; }
@@ -721,7 +721,7 @@ function updateStatsAndLeaderboard() {
         const xp = (reads - reviewsCount) * 100 + (reviewsCount * 300);
 
         let tier = 'bronze', tierLabel = '브론즈';
-        if (xp >= 2500) { tier = 'chicken'; tierLabel = '치킨 마스터'; }
+        if (xp >= 2500) { tier = 'chicken'; tierLabel = '리딩 마스터'; }
         else if (xp >= 1500) { tier = 'diamond'; tierLabel = '다이아몬드'; }
         else if (xp >= 1000) { tier = 'platinum'; tierLabel = '플래티넘'; }
         else if (xp >= 600) { tier = 'gold'; tierLabel = '골드'; }
@@ -777,7 +777,7 @@ function renderRewardsTable(filterQuery = '', sortedStats = null) {
             });
             const xp = (reads - reviewsCount) * 100 + (reviewsCount * 300);
             let tier = 'bronze', tierLabel = '브론즈';
-            if (xp >= 2500) { tier = 'chicken'; tierLabel = '치킨 마스터'; }
+            if (xp >= 2500) { tier = 'chicken'; tierLabel = '리딩 마스터'; }
             else if (xp >= 1500) { tier = 'diamond'; tierLabel = '다이아몬드'; }
             else if (xp >= 1000) { tier = 'platinum'; tierLabel = '플래티넘'; }
             else if (xp >= 600) { tier = 'gold'; tierLabel = '골드'; }
@@ -840,7 +840,7 @@ window.openStudentDetailModal = function(studentId) {
 
     const xp = (reads - reviewsCount) * 100 + (reviewsCount * 300);
     let tier = 'bronze', tierLabel = '브론즈 생존자';
-    if (xp >= 2500) { tier = 'chicken'; tierLabel = '★치킨 마스터★'; }
+    if (xp >= 2500) { tier = 'chicken'; tierLabel = '★리딩 마스터★'; }
     else if (xp >= 1500) { tier = 'diamond'; tierLabel = '다이아몬드 독서왕'; }
     else if (xp >= 1000) { tier = 'platinum'; tierLabel = '플래티넘 스나이퍼'; }
     else if (xp >= 600) { tier = 'gold'; tierLabel = '골드 수집가'; }
