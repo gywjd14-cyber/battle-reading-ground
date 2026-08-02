@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "name": "battle-reading-ground",
+  "cleanUrls": true,
+  "routes": [
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}

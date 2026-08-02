@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>배틀리딩그라운드 - 5학년 온책읽기 & Firebase 독서기록장</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="bg-overlay"></div>
+
+    <!-- Main Container -->
+    <div class="app-container">
+        
+        <!-- Header Section -->
+        <header class="main-header">
+            <div class="header-top-bar">
+                <div class="user-auth-panel" id="userAuthPanel">
+                    <!-- Google Login or Anonymous Guest Login Buttons -->
+                    <button class="google-login-btn" id="googleAuthBtn">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                        <span>Google 로그인</span>
+                    </button>
+                    <button class="guest-login-btn" id="anonAuthBtn">
+                        <i class="fa-solid fa-user-ninja"></i>
+                        <span>익명(게스트) 로그인</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="header-banner">
+                <div class="logo-group">
+                    <span class="badge-tag"><i class="fa-solid fa-crosshairs"></i> 5학년 온책읽기 (Firebase & Vercel)</span>
+                    <h1 class="logo-title">BATTLE <span class="highlight">READING</span> GROUND</h1>
+                    <p class="logo-subtitle">책을 파밍하고 타이핑 감상문으로 보급상자를 획득하라!</p>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-box">
+                        <div class="stat-icon"><i class="fa-solid fa-book-open"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalReadsCount">0</span>
+                            <span class="stat-label">총 완독 책 수</span>
+                        </div>
+                    </div>
+                    <div class="stat-box drop-box-stat">
+                        <div class="stat-icon"><i class="fa-solid fa-box-open"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalReviewsCount">0</span>
+                            <span class="stat-label">작성한 독서감상문</span>
+                        </div>
+                    </div>
+                    <div class="stat-box highlight-stat">
+                        <div class="stat-icon"><i class="fa-solid fa-trophy"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="myCurrentXP">0 XP</span>
+                            <span class="stat-label">내 누적 경험치</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <nav class="nav-tabs">
+                <button class="nav-btn active" data-target="stickerBoardSection">
+                    <i class="fa-solid fa-table-cells"></i> 온책 표지 & 22인 스티커판
+                </button>
+                <button class="nav-btn" data-target="myJournalSection" id="myJournalTabBtn">
+                    <i class="fa-solid fa-book-bookmark"></i> 📖 나만의 독서기록장
+                </button>
+                <button class="nav-btn" data-target="rewardsListSection">
+                    <i class="fa-solid fa-gift"></i> 보상 결과 리스트 & 랭킹
+                </button>
+                <button class="nav-btn" data-target="studentRosterSection">
+                    <i class="fa-solid fa-users"></i> 22명 명단 관리
+                </button>
+                <button class="nav-btn" data-target="rulesGuideSection">
+                    <i class="fa-solid fa-gamepad"></i> 파밍 규칙 & 보상 체계
+                </button>
+                <div class="nav-actions">
+                    <button class="action-btn primary" id="addBookBtn">
+                        <i class="fa-solid fa-plus"></i> 새 온책 추가
+                    </button>
+                    <button class="action-btn secondary" id="printBoardBtn">
+                        <i class="fa-solid fa-print"></i> 스티커판 인쇄 모드
+                    </button>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+
+            <!-- 1. 온책 표지 & 22인 스티커판 Section -->
+            <section id="stickerBoardSection" class="content-section active">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-book"></i> 우리 학급 온책읽기 스티커 현황판</h2>
+                    <p class="section-desc">도서를 완독한 후 번호 칸을 클릭하여 <b>[단순 완독]</b> 또는 <b>[독서감상문 직접 타이핑 작성]</b>을 진행하세요!</p>
+                </div>
+
+                <!-- Current Logged In Notice -->
+                <div class="user-active-notice" id="userActiveNotice">
+                    <i class="fa-solid fa-circle-user"></i> 현재 <b><span id="activeUserNameDisplay">1번 학생 (익명 계정)</span></b>(으)로 로그인되어 있습니다. (상단에서 Google/익명 로그인 전환 가능)
+                </div>
+
+                <!-- Legend Filter Bar -->
+                <div class="legend-bar">
+                    <div class="legend-item">
+                        <span class="sticker-sample empty">1</span>
+                        <span>미완독 (터치하여 완독/감상문 작성)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="sticker-sample read"><i class="fa-solid fa-helmet-safety"></i></span>
+                        <span>단순 완독 (Lv.1 헬멧 / +100 XP)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="sticker-sample review"><i class="fa-solid fa-box-open"></i></span>
+                        <span>독서감상문 작성 완료 (보급상자 / +300 XP + 희귀 보상)</span>
+                    </div>
+                </div>
+
+                <!-- Book Cards Grid -->
+                <div class="books-grid" id="booksGrid">
+                    <!-- Dynamic rendering via app.js -->
+                </div>
+            </section>
+
+            <!-- 2. 나만의 독서기록장 (My Reading Journal) Section -->
+            <section id="myJournalSection" class="content-section">
+                <div class="section-header journal-header-flex">
+                    <div>
+                        <h2><i class="fa-solid fa-book-journal-whills"></i> <span id="journalUserTitle">나만의 배틀리딩 독서기록장</span></h2>
+                        <p class="section-desc">내가 읽은 온책과 직접 작성한 독서감상문 모음집입니다.</p>
+                    </div>
+                    <button class="action-btn primary" id="printMyJournalBtn">
+                        <i class="fa-solid fa-file-pdf"></i> 내 독서기록장 인쇄/PDF 저장
+                    </button>
+                </div>
+
+                <!-- Personal Profile & Achievement Card -->
+                <div class="my-profile-card">
+                    <div class="my-profile-left">
+                        <div class="my-avatar" id="myJournalAvatar">1</div>
+                        <div class="my-info">
+                            <h3 id="myJournalName">1번 학생</h3>
+                            <div class="tier-pill chicken" id="myJournalTier">브론즈 생존자</div>
+                        </div>
+                    </div>
+                    <div class="my-profile-stats">
+                        <div class="m-stat">
+                            <span class="m-num" id="myCountReads">0</span>
+                            <span class="m-lbl">총 완독 도서</span>
+                        </div>
+                        <div class="m-stat">
+                            <span class="m-num" id="myCountReviews" style="color:var(--drop-red)">0</span>
+                            <span class="m-lbl">작성한 감상문 (보급상자)</span>
+                        </div>
+                        <div class="m-stat">
+                            <span class="m-num" id="myCountXP" style="color:var(--primary-yellow)">0 XP</span>
+                            <span class="m-lbl">누적 경험치</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Personal Review Cards List -->
+                <div class="journal-reviews-container">
+                    <h3 class="sub-title"><i class="fa-solid fa-pen-fancy"></i> 내가 직접 작성한 독서감상문 목록</h3>
+                    <div class="journal-reviews-grid" id="journalReviewsGrid">
+                        <!-- Dynamic Review Cards -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. 보상 결과 리스트 & 랭킹 Section -->
+            <section id="rewardsListSection" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-trophy"></i> 배틀리딩그라운드 보상 현황 및 랭킹</h2>
+                    <p class="section-desc">독서감상문을 쓰면 보급상자를 획득하여 보상이 훨씬 커집니다!</p>
+                </div>
+
+                <div class="rewards-dashboard">
+                    <!-- Leaderboard TOP 3 -->
+                    <div class="top-ranks-container" id="topRanksContainer">
+                        <!-- Dynamic TOP 3 cards -->
+                    </div>
+
+                    <!-- Full Class Reward List Table -->
+                    <div class="table-card">
+                        <div class="table-header">
+                            <h3><i class="fa-solid fa-list-ol"></i> 22명 학생 전체 보상 리스트</h3>
+                            <div class="table-search">
+                                <input type="text" id="studentSearchInput" placeholder="학생 이름/번호 검색...">
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="rewards-table">
+                                <thead>
+                                    <tr>
+                                        <th>순위</th>
+                                        <th>번호 / 이름</th>
+                                        <th>완독 책 수</th>
+                                        <th>보급상자 (감상문)</th>
+                                        <th>누적 XP</th>
+                                        <th>생존 등급(티어)</th>
+                                        <th>획득한 칭호 & 아이템</th>
+                                        <th>상세보기</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rewardsTableBody">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. 22명 명단 및 학생 관리 Section -->
+            <section id="studentRosterSection" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-id-card"></i> 학급 22명 학생 명단 및 개인 독서기록장 전환</h2>
+                    <p class="section-desc">학생 카드를 클릭하면 해당 학생으로 로그인되어 독서기록장을 볼 수 있습니다.</p>
+                </div>
+                
+                <div class="roster-grid" id="rosterGrid">
+                    <!-- Dynamic rendering for 22 students -->
+                </div>
+            </section>
+
+            <!-- 5. 파밍 규칙 & 보상 시스템 안내 Section -->
+            <section id="rulesGuideSection" class="content-section">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-gamepad"></i> 배틀리딩그라운드 규칙 & 보상 체계</h2>
+                    <p class="section-desc">게임의 파밍 및 보상 시스템을 참고하여 독서 동기를 극대화합니다.</p>
+                </div>
+
+                <div class="rules-grid">
+                    <div class="rule-card">
+                        <div class="rule-icon"><i class="fa-solid fa-book-bookmark"></i></div>
+                        <h3>1. 일반 독서 파밍</h3>
+                        <p>온책 1권을 완독하면 기본 파밍이 완료됩니다.</p>
+                        <ul>
+                            <li><b>보상:</b> +100 XP, Lv.1 헬멧 스티커</li>
+                            <li><b>아이템:</b> 에너지드링크 (독서 스탬프 1개)</li>
+                        </ul>
+                    </div>
+
+                    <div class="rule-card highlight">
+                        <div class="rule-icon"><i class="fa-solid fa-box-open"></i></div>
+                        <h3>2. 독서감상문 특급 보급상자</h3>
+                        <p>독서감상문을 직접 작성하면 대형 보급상자(Air Drop)를 획득합니다!</p>
+                        <ul>
+                            <li><b>보상:</b> +300 XP (3배!), ★보급상자 스티커★</li>
+                            <li><b>아이템:</b> 3레벨 삼뚝 헬멧, 길리슈트, 전설의 서평가 칭호</li>
+                            <li><b>특전:</b> 학급 '오늘 저녁은 치킨이닭' 쿠폰 뽑기권!</li>
+                        </ul>
+                    </div>
+
+                    <div class="rule-card">
+                        <div class="rule-icon"><i class="fa-solid fa-medal"></i></div>
+                        <h3>3. 생존 티어 (Rank Tiers)</h3>
+                        <p>누적 XP에 따라 독서 생존자 티어가 승급합니다.</p>
+                        <div class="tier-badges">
+                            <span class="tier-tag bronze">브론즈 (0~299 XP)</span>
+                            <span class="tier-tag silver">실버 (300~599 XP)</span>
+                            <span class="tier-tag gold">골드 (600~999 XP)</span>
+                            <span class="tier-tag platinum">플래티넘 (1000~1499 XP)</span>
+                            <span class="tier-tag diamond">다이아몬드 (1500~2499 XP)</span>
+                            <span class="tier-tag chicken"><i class="fa-solid fa-drumstick-bite"></i> 치킨 마스터 (2500+ XP)</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modal: Sticker Select Modal -->
+    <div class="modal" id="stickerModal">
+        <div class="modal-content text-center">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header-icon"><i class="fa-solid fa-crosshairs"></i></div>
+            <h3 id="modalStudentTitle">1번 학생 스티커 부착</h3>
+            <p id="modalBookTitle" class="modal-subtitle">책 제목: 푸른 사자 와니니</p>
+            
+            <div class="sticker-options">
+                <button class="sticker-opt-btn opt-read" id="optReadBtn">
+                    <div class="opt-icon"><i class="fa-solid fa-helmet-safety"></i></div>
+                    <div class="opt-text">
+                        <h4>📗 단순 완독 표시</h4>
+                        <p>책을 다 읽었습니다 (+100 XP)</p>
+                    </div>
+                </button>
+
+                <button class="sticker-opt-btn opt-review" id="optReviewWriteBtn">
+                    <div class="opt-badge">보상 3배 + 보급상자</div>
+                    <div class="opt-icon"><i class="fa-solid fa-pen-to-square"></i></div>
+                    <div class="opt-text">
+                        <h4>📦 독서감상문 직접 작성하기</h4>
+                        <p>감상문을 타이핑하여 보급상자 획득! (+300 XP)</p>
+                    </div>
+                </button>
+
+                <button class="sticker-opt-btn opt-remove" id="optRemoveBtn">
+                    <div class="opt-icon"><i class="fa-solid fa-eraser"></i></div>
+                    <div class="opt-text">
+                        <h4>❌ 스티커 취소 / 초기화</h4>
+                        <p>해당 학생의 표시 삭제</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Write Book Review Editor Modal -->
+    <div class="modal" id="writeReviewModal">
+        <div class="modal-content large-modal">
+            <button class="modal-close">&times;</button>
+            <div class="review-modal-header">
+                <div class="drop-icon-glow"><i class="fa-solid fa-box-open"></i></div>
+                <div>
+                    <h3 id="writeReviewBookTitle">📦 독서감상문 작성 (보급상자 파밍)</h3>
+                    <p class="modal-subtitle" id="writeReviewStudentInfo">작성자: 1번 김생존</p>
+                </div>
+            </div>
+
+            <form id="writeReviewForm" class="review-editor-form">
+                <div class="form-group">
+                    <label for="reviewTitleInput">감상문 제목 *</label>
+                    <input type="text" id="reviewTitleInput" placeholder="예: 와니니의 용기에서 배운 나의 다짐" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="reviewSceneInput">가장 인상 깊었던 장면이나 문장 *</label>
+                    <textarea id="reviewSceneInput" rows="2" placeholder="책 내용 중 가장 마음에 남거나 인상적이었던 부분을 적어주세요." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="reviewContentInput">나의 생각과 느낌 (직접 타이핑) *</label>
+                    <textarea id="reviewContentInput" rows="5" placeholder="이 책을 읽고 어떤 생각이 들었나요? 주인공에게 하고 싶은 말이나 느낀 점을 자유롭게 적으세요." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="reviewResolutionInput">이 책을 읽고 나 자신에게 한 다짐 또는 깨달음</label>
+                    <input type="text" id="reviewResolutionInput" placeholder="예: 앞으로 부당한 일 앞에서도 용기를 내는 사람이 되겠다.">
+                </div>
+
+                <div class="form-actions review-form-actions">
+                    <button type="button" class="action-btn secondary modal-close-btn">취소</button>
+                    <button type="submit" class="action-btn primary drop-submit-btn">
+                        <i class="fa-solid fa-parachute-box"></i> 감상문 저장 & 보급상자(+300 XP) 획득!
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Read Review Detail Modal -->
+    <div class="modal" id="readReviewDetailModal">
+        <div class="modal-content large-modal">
+            <button class="modal-close">&times;</button>
+            <div class="review-detail-header">
+                <span class="review-badge-drop"><i class="fa-solid fa-box-open"></i> 보급상자 독서감상문</span>
+                <h3 id="viewReviewTitle">감상문 제목</h3>
+                <div class="view-review-meta">
+                    <span id="viewReviewBook">도서: 푸른 사자 와니니</span>
+                    <span id="viewReviewAuthorDate">작성자: 1번 김생존 | 작성일: 2026-08-02</span>
+                </div>
+            </div>
+
+            <div class="review-detail-body">
+                <div class="review-block">
+                    <h4><i class="fa-solid fa-quote-left"></i> 가장 인상 깊었던 장면 / 문장</h4>
+                    <p id="viewReviewScene" class="quote-box">장면 내용...</p>
+                </div>
+
+                <div class="review-block">
+                    <h4><i class="fa-solid fa-comment-dots"></i> 나의 생각과 느낌</h4>
+                    <p id="viewReviewContent" class="content-box">느낌 내용...</p>
+                </div>
+
+                <div class="review-block">
+                    <h4><i class="fa-solid fa-lightbulb"></i> 나의 다짐 및 깨달음</h4>
+                    <p id="viewReviewResolution" class="resolution-box">다짐 내용...</p>
+                </div>
+            </div>
+
+            <div class="review-detail-footer" id="viewReviewFooterActions">
+                <!-- Dynamic edit/delete buttons -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add New Book Modal -->
+    <div class="modal" id="addBookModal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <h3><i class="fa-solid fa-book-medical"></i> 새 온책 추가하기</h3>
+            <form id="addBookForm">
+                <div class="form-group">
+                    <label for="bookTitleInput">책 제목 *</label>
+                    <input type="text" id="bookTitleInput" placeholder="예: 초정리 편전" required>
+                </div>
+                <div class="form-group">
+                    <label for="bookAuthorInput">저자 / 출판사</label>
+                    <input type="text" id="bookAuthorInput" placeholder="예: 배유안 / 창비">
+                </div>
+                <div class="form-group">
+                    <label for="bookCoverInput">표지 이미지 URL (또는 기본이미지 선택)</label>
+                    <input type="url" id="bookCoverInput" placeholder="https://example.com/cover.jpg">
+                    <small class="form-hint">비워두시면 기본 게이밍 온책 표지가 자동 설정됩니다.</small>
+                </div>
+                <div class="form-group">
+                    <label for="bookDescInput">책 소개 / 주제어</label>
+                    <textarea id="bookDescInput" rows="2" placeholder="책의 주요 내용이나 읽기 포인트를 적어주세요."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="action-btn primary"><i class="fa-solid fa-check"></i> 등록하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Student Detail Inventory Modal -->
+    <div class="modal" id="studentDetailModal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="student-profile-header">
+                <div class="student-avatar" id="detailAvatar">1</div>
+                <div class="student-title-info">
+                    <h3 id="detailStudentName">1번 김생존</h3>
+                    <div class="tier-pill" id="detailTierPill">브론즈 생존자</div>
+                </div>
+            </div>
+            <div class="student-detail-stats">
+                <div class="detail-stat-item">
+                    <span class="d-val" id="detailTotalReads">0</span>
+                    <span class="d-lbl">완독 도서</span>
+                </div>
+                <div class="detail-stat-item">
+                    <span class="d-val" id="detailTotalDrops">0</span>
+                    <span class="d-lbl">보급상자 (감상문)</span>
+                </div>
+                <div class="detail-stat-item">
+                    <span class="d-val" id="detailTotalXP">0 XP</span>
+                    <span class="d-lbl">누적 경험치</span>
+                </div>
+            </div>
+
+            <div class="inventory-section">
+                <h4><i class="fa-solid fa-briefcase"></i> 파밍 인벤토리 및 획득 보상</h4>
+                <div class="inventory-grid" id="detailInventoryGrid">
+                    <!-- Dynamic inventory items -->
+                </div>
+            </div>
+
+            <div class="read-history-section">
+                <h4><i class="fa-solid fa-history"></i> 독서 및 감상문 현황</h4>
+                <ul class="history-list" id="detailHistoryList">
+                    <!-- History items -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ES Module JS -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
