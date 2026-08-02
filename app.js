@@ -233,16 +233,41 @@ async function handleGoogleLogin() {
     if (isFirebaseReady && auth) {
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
-            alert("🔥 Firebase Google 로그인에 성공했습니다!");
+            // Prompt account selection
+            provider.setCustomParameters({ prompt: 'select_account' });
+            
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            
+            currentUser = {
+                studentId: currentUser.studentId || 1,
+                name: user.displayName || user.email.split('@')[0],
+                email: user.email,
+                avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`,
+                uid: user.uid,
+                authType: 'google'
+            };
+
+            saveData();
+            renderUserAuthPanel();
+            renderBooksGrid();
+            renderMyJournalSection();
+            alert(`🎉 Firebase Google 계정 (${user.email})으로 성공적으로 로그인되었습니다!`);
             return;
         } catch (e) {
-            console.warn("Firebase Google login error, switching to prompt fallback:", e);
+            console.error("Firebase Google login error:", e);
+            if (e.code === 'auth/unauthorized-domain') {
+                alert(`⚠️ 현재 웹 도메인이 Firebase 승인 도메인에 등록되어 있지 않습니다.\nFirebase 콘솔 > Authentication > 설정 > 승인된 도메인에 현재 Vercel 주소를 추가해주세요.\n\n(대신 간편 구글 프로필 로그인을 진행합니다)`);
+            } else if (e.code === 'auth/popup-blocked') {
+                alert(`⚠️ 브라우저 팝업이 차단되었습니다. 팝업 차단을 해제한 후 다시 시도해주세요.`);
+            } else {
+                alert(`⚠️ 구글 로그인 팝업 호출 중 메시지: ${e.message || '팝업 창이 닫혔습니다.'}`);
+            }
         }
     }
 
     // Demo Prompt Fallback
-    const googleEmail = prompt('구글 계정 이메일을 입력하세요:', 'student1@gmail.com');
+    const googleEmail = prompt('구글 계정 이메일을 입력하세요 (예: student@gmail.com):', 'student1@gmail.com');
     if (!googleEmail) return;
 
     const userName = prompt('사용할 이름을 입력하세요:', '김구글 (1번)');
@@ -270,7 +295,7 @@ async function handleGoogleLogin() {
     renderBooksGrid();
     renderRosterGrid();
     renderMyJournalSection();
-    alert(`🎉 Google 계정 (${googleEmail})으로 성공적으로 로그인되었습니다!`);
+    alert(`🎉 Google 계정 (${googleEmail})으로 로그인되었습니다!`);
 }
 
 // Anonymous (Guest) Auth Handler
