@@ -265,11 +265,8 @@ async function handleGoogleLogin() {
             renderBooksGrid();
             renderMyJournalSection();
 
-            if (!currentUser.isApproved) {
-                openNumberApprovalModal();
-            } else {
-                alert(`🎉 Google 계정 (${user.email})으로 성공적으로 로그인되었습니다!`);
-            }
+            // Always trigger Number Approval Modal if not approved yet
+            openNumberApprovalModal();
             return;
         } catch (e) {
             console.error("Firebase Google login error:", e);
@@ -305,11 +302,8 @@ async function handleGoogleLogin() {
     renderBooksGrid();
     renderMyJournalSection();
 
-    if (!currentUser.isApproved) {
-        openNumberApprovalModal();
-    } else {
-        alert(`🎉 Google 계정 (${googleEmail})으로 로그인되었습니다!`);
-    }
+    // Always open Number Approval Modal
+    openNumberApprovalModal();
 }
 
 // Anonymous (Guest) Auth Handler
@@ -339,11 +333,8 @@ async function handleAnonymousLogin() {
     renderBooksGrid();
     renderMyJournalSection();
 
-    if (!currentUser.isApproved) {
-        openNumberApprovalModal();
-    } else {
-        alert(`🥷 익명 게스트 계정으로 접속하셨습니다.`);
-    }
+    // Always open Number Approval Modal
+    openNumberApprovalModal();
 }
 
 // Open Student Number Approval Modal
