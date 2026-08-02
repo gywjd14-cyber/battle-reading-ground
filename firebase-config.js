@@ -29,14 +29,15 @@ import {
     where 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Firebase Configuration (Replace with your actual Firebase Project keys)
+// Firebase Configuration (Updated with User's actual Project keys)
 const firebaseConfig = {
-    apiKey: "AIzaSyYOUR_ACTUAL_API_KEY_HERE",
+    apiKey: "AIzaSyAUwbza_6YoGiPvmUnBPB1pmJQlZ6Vy1ws",
     authDomain: "battle-reading-ground.firebaseapp.com",
     projectId: "battle-reading-ground",
-    storageBucket: "battle-reading-ground.appspot.com",
-    messagingSenderId: "1234567890",
-    appId: "1:1234567890:web:abcdef123456"
+    storageBucket: "battle-reading-ground.firebasestorage.app",
+    messagingSenderId: "395989620767",
+    appId: "1:395989620767:web:7ad3a7bb8f6ef8a12c1d2a",
+    measurementId: "G-50XECN4B7Q"
 };
 
 // Initialize Firebase
@@ -48,9 +49,9 @@ try {
     auth = getAuth(app);
     db = getFirestore(app);
     isFirebaseReady = true;
-    console.log("🔥 Firebase initialized successfully.");
+    console.log("🔥 Firebase initialized successfully with actual config.");
 } catch (e) {
-    console.warn("⚠️ Firebase configuration placeholder active. Local demo fallback enabled.", e);
+    console.warn("⚠️ Firebase configuration error:", e);
 }
 
 export { 
