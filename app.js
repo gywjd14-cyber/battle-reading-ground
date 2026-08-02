@@ -1,6 +1,6 @@
 /**
- * BATTLE READING GROUND v2.5 (Firebase & Vercel Ready)
- * Google Auth, Anonymous Auth, Firestore Database, Direct Typing Book Reviews & My Journal
+ * BATTLE READING GROUND v3.0
+ * Authentication Required & Student Number Approval Verification System
  */
 
 import { 
@@ -11,18 +11,7 @@ import {
     GoogleAuthProvider, 
     signInAnonymously, 
     signOut, 
-    onAuthStateChanged,
-    collection, 
-    doc, 
-    setDoc, 
-    getDoc, 
-    getDocs, 
-    onSnapshot, 
-    addDoc, 
-    updateDoc, 
-    deleteDoc, 
-    query, 
-    where 
+    onAuthStateChanged 
 } from './firebase-config.js';
 
 // Default 5th Grade Books
@@ -69,7 +58,7 @@ const defaultBooks = [
     }
 ];
 
-// Initial 22 Students
+// Initial 22 Students Roster
 const initialStudents = Array.from({ length: 22 }, (_, i) => ({
     id: i + 1,
     name: `${i + 1}번 학생`,
@@ -78,11 +67,20 @@ const initialStudents = Array.from({ length: 22 }, (_, i) => ({
     avatar: null
 }));
 
-// Global State
+// State Management
 let students = JSON.parse(localStorage.getItem('brg_students')) || initialStudents;
 let books = JSON.parse(localStorage.getItem('brg_books')) || defaultBooks;
 let reviews = JSON.parse(localStorage.getItem('brg_reviews')) || [];
-let currentUser = JSON.parse(localStorage.getItem('brg_current_user')) || { studentId: 1, name: '1번 학생', authType: 'local' };
+
+// Current User Auth & Student Number Approval State
+let currentUser = JSON.parse(localStorage.getItem('brg_current_user')) || {
+    isLoggedIn: false,
+    studentId: null,
+    name: null,
+    email: null,
+    isApproved: false,
+    authType: null
+};
 
 let activeTarget = {
     bookId: null,
@@ -90,7 +88,7 @@ let activeTarget = {
     reviewId: null
 };
 
-// DOM Initialization
+// Initial Setup
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
     setupFirebaseAuthListener();
@@ -121,22 +119,32 @@ function setupFirebaseAuthListener() {
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            console.log("Firebase Auth User logged in:", user);
+            console.log("Firebase Auth User:", user);
             const isAnon = user.isAnonymous;
+            
+            // Retain approved studentId if already assigned
+            const prevStudentId = currentUser.studentId;
+            const prevApproved = currentUser.isApproved;
+
             currentUser = {
-                studentId: currentUser.studentId || 1,
+                isLoggedIn: true,
+                studentId: prevStudentId || null,
                 name: user.displayName || (isAnon ? '익명 게스트' : user.email.split('@')[0]),
                 email: user.email || 'guest@anonymous.io',
                 avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`,
                 uid: user.uid,
+                isApproved: prevApproved || false,
                 authType: isAnon ? 'anonymous' : 'google'
             };
+
             saveData();
             renderUserAuthPanel();
             renderBooksGrid();
             renderMyJournalSection();
-        } else {
-            console.log("Firebase Auth User logged out");
+
+            if (!currentUser.isApproved) {
+                setTimeout(() => openNumberApprovalModal(), 500);
+            }
         }
     });
 }
@@ -162,7 +170,7 @@ function setupTabNavigation() {
     });
 }
 
-// Event Listeners Setup
+// Global Event Listeners
 function setupEventListeners() {
     // Modals Close
     document.querySelectorAll('.modal-close, .modal-close-btn').forEach(btn => {
@@ -175,7 +183,10 @@ function setupEventListeners() {
     document.getElementById('googleAuthBtn').addEventListener('click', handleGoogleLogin);
     document.getElementById('anonAuthBtn').addEventListener('click', handleAnonymousLogin);
 
-    // Sticker Modal options
+    // Number Approval Button Handler
+    document.getElementById('confirmApproveBtn').addEventListener('click', handleConfirmNumberApproval);
+
+    // Sticker Modal Options
     document.getElementById('optReadBtn').addEventListener('click', () => setStickerStatus('read'));
     document.getElementById('optReviewWriteBtn').addEventListener('click', () => {
         document.getElementById('stickerModal').classList.remove('active');
@@ -233,18 +244,19 @@ async function handleGoogleLogin() {
     if (isFirebaseReady && auth) {
         try {
             const provider = new GoogleAuthProvider();
-            // Prompt account selection
             provider.setCustomParameters({ prompt: 'select_account' });
             
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
             
             currentUser = {
-                studentId: currentUser.studentId || 1,
+                isLoggedIn: true,
+                studentId: currentUser.studentId || null,
                 name: user.displayName || user.email.split('@')[0],
                 email: user.email,
                 avatar: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.uid}`,
                 uid: user.uid,
+                isApproved: currentUser.isApproved || false,
                 authType: 'google'
             };
 
@@ -252,16 +264,19 @@ async function handleGoogleLogin() {
             renderUserAuthPanel();
             renderBooksGrid();
             renderMyJournalSection();
-            alert(`🎉 Firebase Google 계정 (${user.email})으로 성공적으로 로그인되었습니다!`);
+
+            if (!currentUser.isApproved) {
+                openNumberApprovalModal();
+            } else {
+                alert(`🎉 Google 계정 (${user.email})으로 성공적으로 로그인되었습니다!`);
+            }
             return;
         } catch (e) {
             console.error("Firebase Google login error:", e);
             if (e.code === 'auth/unauthorized-domain') {
-                alert(`⚠️ 현재 웹 도메인이 Firebase 승인 도메인에 등록되어 있지 않습니다.\nFirebase 콘솔 > Authentication > 설정 > 승인된 도메인에 현재 Vercel 주소를 추가해주세요.\n\n(대신 간편 구글 프로필 로그인을 진행합니다)`);
+                alert(`⚠️ 현재 웹 도메인이 Firebase 승인 도메인에 등록되어 있지 않습니다.\nFirebase 콘솔 > Authentication > 설정 > 승인된 도메인에 Vercel 주소를 추가해주세요.\n\n(대신 간편 구글 프로필 로그인을 진행합니다)`);
             } else if (e.code === 'auth/popup-blocked') {
                 alert(`⚠️ 브라우저 팝업이 차단되었습니다. 팝업 차단을 해제한 후 다시 시도해주세요.`);
-            } else {
-                alert(`⚠️ 구글 로그인 팝업 호출 중 메시지: ${e.message || '팝업 창이 닫혔습니다.'}`);
             }
         }
     }
@@ -270,32 +285,31 @@ async function handleGoogleLogin() {
     const googleEmail = prompt('구글 계정 이메일을 입력하세요 (예: student@gmail.com):', 'student1@gmail.com');
     if (!googleEmail) return;
 
-    const userName = prompt('사용할 이름을 입력하세요:', '김구글 (1번)');
+    const userName = prompt('사용할 이름을 입력하세요:', '김구글');
     if (!userName) return;
 
     const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(googleEmail)}`;
 
     currentUser = {
-        studentId: currentUser.studentId || 1,
+        isLoggedIn: true,
+        studentId: currentUser.studentId || null,
         name: userName,
         email: googleEmail,
         avatar: avatarUrl,
+        isApproved: currentUser.isApproved || false,
         authType: 'google'
     };
-
-    const currentStudent = students.find(s => s.id === currentUser.studentId);
-    if (currentStudent) {
-        currentStudent.name = userName;
-        currentStudent.googleEmail = googleEmail;
-        currentStudent.avatar = avatarUrl;
-    }
 
     saveData();
     renderUserAuthPanel();
     renderBooksGrid();
-    renderRosterGrid();
     renderMyJournalSection();
-    alert(`🎉 Google 계정 (${googleEmail})으로 로그인되었습니다!`);
+
+    if (!currentUser.isApproved) {
+        openNumberApprovalModal();
+    } else {
+        alert(`🎉 Google 계정 (${googleEmail})으로 로그인되었습니다!`);
+    }
 }
 
 // Anonymous (Guest) Auth Handler
@@ -303,7 +317,6 @@ async function handleAnonymousLogin() {
     if (isFirebaseReady && auth) {
         try {
             await signInAnonymously(auth);
-            alert("🥷 Firebase 익명(게스트) 로그인에 성공했습니다!");
             return;
         } catch (e) {
             console.warn("Firebase Anonymous login error, fallback active:", e);
@@ -312,10 +325,12 @@ async function handleAnonymousLogin() {
 
     const guestId = Math.floor(Math.random() * 900) + 100;
     currentUser = {
-        studentId: currentUser.studentId || 1,
+        isLoggedIn: true,
+        studentId: currentUser.studentId || null,
         name: `게스트_${guestId}`,
         email: `guest_${guestId}@anonymous.io`,
         avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${guestId}`,
+        isApproved: currentUser.isApproved || false,
         authType: 'anonymous'
     };
 
@@ -323,24 +338,79 @@ async function handleAnonymousLogin() {
     renderUserAuthPanel();
     renderBooksGrid();
     renderMyJournalSection();
-    alert(`🥷 익명 게스트 (게스트_${guestId}) 계정으로 접속하셨습니다.`);
+
+    if (!currentUser.isApproved) {
+        openNumberApprovalModal();
+    } else {
+        alert(`🥷 익명 게스트 계정으로 접속하셨습니다.`);
+    }
 }
 
-// Render Header Auth Panel
+// Open Student Number Approval Modal
+function openNumberApprovalModal() {
+    const select = document.getElementById('selectStudentNum');
+    select.innerHTML = '';
+
+    students.forEach(st => {
+        const opt = document.createElement('option');
+        opt.value = st.id;
+        opt.innerText = `${st.number}번 - ${st.name}`;
+        if (currentUser.studentId === st.id) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    document.getElementById('numberApprovalModal').classList.add('active');
+}
+
+// Handle Confirm Number Approval
+function handleConfirmNumberApproval() {
+    const selectedId = parseInt(document.getElementById('selectStudentNum').value, 10);
+    const selectedStudent = students.find(s => s.id === selectedId);
+
+    if (selectedStudent) {
+        currentUser.studentId = selectedId;
+        currentUser.isApproved = true;
+
+        if (currentUser.authType === 'google') {
+            selectedStudent.googleEmail = currentUser.email;
+        }
+
+        saveData();
+        renderUserAuthPanel();
+        renderBooksGrid();
+        renderRosterGrid();
+        renderMyJournalSection();
+
+        document.getElementById('numberApprovalModal').classList.remove('active');
+        alert(`✅ ${selectedStudent.number}번 (${selectedStudent.name}) 번호로 승인되었습니다!\n이제 본인의 ${selectedStudent.number}번 칸에 스티커를 부착하실 수 있습니다.`);
+    }
+}
+
+// Render Header Auth Panel & Notice
 function renderUserAuthPanel() {
     const authPanel = document.getElementById('userAuthPanel');
-    const activeNoticeName = document.getElementById('activeUserNameDisplay');
+    const activeNotice = document.getElementById('userActiveNotice');
 
-    if (currentUser && (currentUser.authType === 'google' || currentUser.authType === 'anonymous')) {
+    if (currentUser && currentUser.isLoggedIn) {
+        const studentInfo = currentUser.isApproved ? `${currentUser.studentId}번 [${students.find(s=>s.id===currentUser.studentId)?.name}]` : '미승인';
+
         authPanel.innerHTML = `
             <div class="user-profile-badge">
                 <img src="${currentUser.avatar || 'https://via.placeholder.com/28'}" alt="Avatar" class="user-avatar-img">
-                <span class="user-profile-name">${currentUser.name} (${currentUser.authType === 'google' ? 'Google' : '익명'})</span>
+                <span class="user-profile-name">${currentUser.name} (${studentInfo})</span>
+                <button class="action-btn secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="openNumberApprovalModal()">번호 변경/승인</button>
                 <button class="logout-link" id="logoutBtn">로그아웃</button>
             </div>
         `;
         document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-        if (activeNoticeName) activeNoticeName.innerText = `${currentUser.name} [${currentUser.authType.toUpperCase()}]`;
+
+        if (activeNotice) {
+            if (currentUser.isApproved) {
+                activeNotice.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--accent-green)"></i> 현재 <b>${studentInfo}</b> 승인 상태입니다. <b>(${currentUser.studentId}번 칸 스티커 부착 가능)</b>`;
+            } else {
+                activeNotice.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--primary-yellow)"></i> 로그인 완료! 스티커를 붙이려면 <button class="action-btn primary" style="padding:2px 8px; font-size:0.75rem; margin-left:6px;" onclick="openNumberApprovalModal()">[학급 번호 승인받기]</button>를 클릭하세요.`;
+            }
+        }
     } else {
         authPanel.innerHTML = `
             <button class="google-login-btn" id="googleAuthBtn">
@@ -355,8 +425,9 @@ function renderUserAuthPanel() {
         document.getElementById('googleAuthBtn').addEventListener('click', handleGoogleLogin);
         document.getElementById('anonAuthBtn').addEventListener('click', handleAnonymousLogin);
 
-        const currentStudent = students.find(s => s.id === currentUser.studentId) || students[0];
-        if (activeNoticeName) activeNoticeName.innerText = currentStudent.name;
+        if (activeNotice) {
+            activeNotice.innerHTML = `<i class="fa-solid fa-lock" style="color:var(--drop-red)"></i> 스티커를 부착하려면 <b>상단에서 Google 또는 익명 로그인</b> 후 본인 번호를 승인받으세요.`;
+        }
     }
 }
 
@@ -365,86 +436,43 @@ async function handleLogout() {
     if (isFirebaseReady && auth) {
         try { await signOut(auth); } catch(e) { console.error(e); }
     }
-    currentUser = { studentId: 1, name: '1번 학생', authType: 'local' };
+    currentUser = { isLoggedIn: false, studentId: null, name: null, email: null, isApproved: false, authType: null };
     saveData();
     renderUserAuthPanel();
     renderBooksGrid();
     renderMyJournalSection();
 }
 
-// Render Books Grid & 22 Sticker Cells
-function renderBooksGrid() {
-    const booksGrid = document.getElementById('booksGrid');
-    booksGrid.innerHTML = '';
+// Open Sticker Modal with Auth & Student Number Verification Check
+window.openStickerModal = function(bookId, targetStudentId) {
+    // 1. Check Login
+    if (!currentUser || !currentUser.isLoggedIn) {
+        alert("🔒 스티커를 부착하려면 먼저 상단에서 [Google 로그인] 또는 [익명 로그인]을 해주세요!");
+        return;
+    }
 
-    books.forEach(book => {
-        const card = document.createElement('div');
-        card.className = 'book-card';
+    // 2. Check Number Approval
+    if (!currentUser.isApproved || !currentUser.studentId) {
+        alert("⚠️ 스티커를 붙이기 전에 먼저 본인의 학급 번호(1~22번)를 승인받아야 합니다.");
+        openNumberApprovalModal();
+        return;
+    }
 
-        const stickerKeys = Object.keys(book.stickers || {});
-        const completedCount = stickerKeys.filter(k => book.stickers[k] !== null).length;
-        const progressPct = Math.round((completedCount / 22) * 100);
+    // 3. Match Student Number Check
+    if (currentUser.studentId !== targetStudentId) {
+        const myStudentName = students.find(s => s.id === currentUser.studentId)?.name || `${currentUser.studentId}번`;
+        alert(`🔒 권한 거부: 현재 승인된 [${currentUser.studentId}번 ${myStudentName}] 칸에만 스티커를 붙이실 수 있습니다.\n(${targetStudentId}번 타인 번호 칸은 선택할 수 없습니다.)`);
+        return;
+    }
 
-        let stickerCellsHTML = '';
-        for (let i = 1; i <= 22; i++) {
-            const status = book.stickers && book.stickers[i];
-            const studentObj = students.find(s => s.id === i) || { name: `${i}번` };
-            const statusClass = status === 'read' ? 'status-read' : (status === 'review' ? 'status-review' : '');
-
-            stickerCellsHTML += `
-                <div class="sticker-cell ${statusClass}" 
-                     onclick="openStickerModal('${book.id}', ${i})" 
-                     title="${i}번 ${studentObj.name} - ${status === 'read' ? '완독' : (status === 'review' ? '독서감상문 작성완료 (보급상자)' : '미완독')}">
-                    <span class="cell-number">${i}</span>
-                    <span class="cell-name">${studentObj.name.replace(/^[0-9]+번\s?/, '') || studentObj.name}</span>
-                </div>
-            `;
-        }
-
-        card.innerHTML = `
-            <div class="book-top-info">
-                <div class="book-cover-container">
-                    <img src="${book.cover}" alt="${book.title}" class="book-cover-img" onerror="this.src='assets/airdrop_crate_1785634116287.jpg'">
-                    <span class="book-badge-drop"><i class="fa-solid fa-parachute-box"></i> 온책</span>
-                </div>
-                <div class="book-meta">
-                    <h3 class="book-title">${book.title}</h3>
-                    <div class="book-author"><i class="fa-solid fa-pen-nib"></i> ${book.author}</div>
-                    <p class="book-desc">${book.desc}</p>
-                    
-                    <div class="book-progress-bar-container">
-                        <div class="book-progress-fill" style="width: ${progressPct}%"></div>
-                    </div>
-                    <div class="book-progress-text">
-                        <span>학급 달성율: ${progressPct}% (${completedCount}/22명)</span>
-                        <span><i class="fa-solid fa-box-open" style="color:var(--drop-red)"></i> 감상문: ${stickerKeys.filter(k => book.stickers[k] === 'review').length}명</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="sticker-section-title">
-                <span><i class="fa-solid fa-users"></i> 학급 22명 완독 & 감상문 스티커 판</span>
-                <span>(클릭 시 단순 완독 or 감상문 작성)</span>
-            </div>
-            
-            <div class="stickers-grid">
-                ${stickerCellsHTML}
-            </div>
-        `;
-
-        booksGrid.appendChild(card);
-    });
-}
-
-// Open Sticker Modal
-window.openStickerModal = function(bookId, studentId) {
+    // Auth Passed -> Open Sticker Selection Modal
     activeTarget.bookId = bookId;
-    activeTarget.studentId = studentId;
+    activeTarget.studentId = targetStudentId;
 
     const book = books.find(b => b.id === bookId);
-    const student = students.find(s => s.id === studentId);
+    const student = students.find(s => s.id === targetStudentId);
 
-    document.getElementById('modalStudentTitle').innerText = `${studentId}번 [${student.name}] 학생 스티커 표시`;
+    document.getElementById('modalStudentTitle').innerText = `${targetStudentId}번 [${student.name}] 학생 스티커 부착`;
     document.getElementById('modalBookTitle').innerText = `책 제목: ${book.title}`;
 
     document.getElementById('stickerModal').classList.add('active');
@@ -547,17 +575,81 @@ function saveBookReview() {
     alert('🎉 독서감상문이 저장되었습니다! 보급상자 스티커와 +300 XP를 획득했습니다!');
 }
 
+// Render Books Grid & 22 Sticker Cells
+function renderBooksGrid() {
+    const booksGrid = document.getElementById('booksGrid');
+    booksGrid.innerHTML = '';
+
+    books.forEach(book => {
+        const card = document.createElement('div');
+        card.className = 'book-card';
+
+        const stickerKeys = Object.keys(book.stickers || {});
+        const completedCount = stickerKeys.filter(k => book.stickers[k] !== null).length;
+        const progressPct = Math.round((completedCount / 22) * 100);
+
+        let stickerCellsHTML = '';
+        for (let i = 1; i <= 22; i++) {
+            const status = book.stickers && book.stickers[i];
+            const studentObj = students.find(s => s.id === i) || { name: `${i}번` };
+            const statusClass = status === 'read' ? 'status-read' : (status === 'review' ? 'status-review' : '');
+
+            stickerCellsHTML += `
+                <div class="sticker-cell ${statusClass}" 
+                     onclick="openStickerModal('${book.id}', ${i})" 
+                     title="${i}번 ${studentObj.name} - ${status === 'read' ? '완독' : (status === 'review' ? '독서감상문 작성완료 (보급상자)' : '미완독')}">
+                    <span class="cell-number">${i}</span>
+                    <span class="cell-name">${studentObj.name.replace(/^[0-9]+번\s?/, '') || studentObj.name}</span>
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <div class="book-top-info">
+                <div class="book-cover-container">
+                    <img src="${book.cover}" alt="${book.title}" class="book-cover-img" onerror="this.src='assets/airdrop_crate_1785634116287.jpg'">
+                    <span class="book-badge-drop"><i class="fa-solid fa-parachute-box"></i> 온책</span>
+                </div>
+                <div class="book-meta">
+                    <h3 class="book-title">${book.title}</h3>
+                    <div class="book-author"><i class="fa-solid fa-pen-nib"></i> ${book.author}</div>
+                    <p class="book-desc">${book.desc}</p>
+                    
+                    <div class="book-progress-bar-container">
+                        <div class="book-progress-fill" style="width: ${progressPct}%"></div>
+                    </div>
+                    <div class="book-progress-text">
+                        <span>학급 달성율: ${progressPct}% (${completedCount}/22명)</span>
+                        <span><i class="fa-solid fa-box-open" style="color:var(--drop-red)"></i> 감상문: ${stickerKeys.filter(k => book.stickers[k] === 'review').length}명</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sticker-section-title">
+                <span><i class="fa-solid fa-users"></i> 학급 22명 완독 & 감상문 스티커 판</span>
+                <span>(승인받은 본인 번호만 클릭 가능)</span>
+            </div>
+            
+            <div class="stickers-grid">
+                ${stickerCellsHTML}
+            </div>
+        `;
+
+        booksGrid.appendChild(card);
+    });
+}
+
 // Render My Journal
 function renderMyJournalSection() {
-    const currentStudentId = currentUser.studentId || 1;
+    const currentStudentId = currentUser && currentUser.isApproved ? currentUser.studentId : 1;
     const student = students.find(s => s.id === currentStudentId) || students[0];
 
     document.getElementById('journalUserTitle').innerText = `${student.name}의 배틀리딩 독서기록장`;
     document.getElementById('myJournalName').innerText = `${student.name} (${student.number}번)`;
     
     const avatarContainer = document.getElementById('myJournalAvatar');
-    if (student.avatar) {
-        avatarContainer.innerHTML = `<img src="${student.avatar}" alt="Avatar">`;
+    if (currentUser && currentUser.avatar) {
+        avatarContainer.innerHTML = `<img src="${currentUser.avatar}" alt="Avatar">`;
     } else {
         avatarContainer.innerText = student.number;
     }
@@ -596,7 +688,7 @@ function renderMyJournalSection() {
             <div style="grid-column: 1/-1; text-align:center; padding:40px; color:var(--text-sub);">
                 <i class="fa-solid fa-box-open" style="font-size:3rem; color:var(--drop-red); margin-bottom:12px;"></i>
                 <p>아직 작성한 독서감상문이 없습니다.</p>
-                <p style="font-size:0.85rem; margin-top:6px;">온책 읽기 스티커판에서 책을 클릭하여 감상문을 직접 타이핑해 보세요!</p>
+                <p style="font-size:0.85rem; margin-top:6px;">온책 읽기 스티커판에서 본인 번호를 클릭하여 감상문을 직접 타이핑해 보세요!</p>
             </div>
         `;
         return;
@@ -694,11 +786,7 @@ function renderRosterGrid() {
         card.className = 'roster-card';
         card.onclick = (e) => {
             if (e.target.tagName !== 'INPUT') {
-                currentUser = { studentId: student.id, name: student.name, authType: 'local' };
-                saveData();
-                renderUserAuthPanel();
-                renderMyJournalSection();
-                document.querySelector('[data-target="myJournalSection"]').click();
+                openStudentDetailModal(student.id);
             }
         };
 
@@ -707,7 +795,7 @@ function renderRosterGrid() {
             <div class="roster-info">
                 <input type="text" class="roster-name-input" value="${student.name}" 
                        onchange="updateStudentName(${student.id}, this.value)" title="클릭하여 이름 수정">
-                <div class="roster-sub">${student.googleEmail ? 'Google 연동됨' : '클릭 시 이 학생 독서기록장으로 전환'}</div>
+                <div class="roster-sub">${student.googleEmail ? 'Google 연동됨' : '클릭 시 인벤토리 보기'}</div>
             </div>
             <div class="roster-action">
                 <i class="fa-solid fa-chevron-right" style="color:var(--text-sub)"></i>
@@ -890,7 +978,7 @@ window.openStudentDetailModal = function(studentId) {
     if (reviewsCount > 0) invHTML.push('<div class="inv-item legendary"><i class="fa-solid fa-box-open"></i> 전설의 보급상자 x' + reviewsCount + '</div>');
     if (reviewsCount > 0) invHTML.push('<div class="inv-item legendary"><i class="fa-solid fa-shield-halved"></i> 3레벨 삼뚝 헬멧</div>');
     if (xp >= 1500) invHTML.push('<div class="inv-item legendary"><i class="fa-solid fa-tree"></i> 위장 길리슈트</div>');
-    if (xp >= 2500) invHTML.push('<div class="inv-item legendary" style="background:#ff3b30; color:#fff;"><i class="fa-solid fa-drumstick-bite"></i> 치킨 파티 쿠폰</div>');
+    if (xp >= 2500) invHTML.push('<div class="inv-item legendary" style="background:#ff3b30; color:#fff;"><i class="fa-solid fa-crown"></i> 리딩 마스터 상장</div>');
 
     invGrid.innerHTML = invHTML.join('');
 

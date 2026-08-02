@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>배틀리딩그라운드 - 5학년 온책읽기 & Firebase 독서기록장</title>
+    <title>배틀리딩그라운드 - 5학년 온책읽기 & 학생 번호 승인</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,9 +36,9 @@
 
             <div class="header-banner">
                 <div class="logo-group">
-                    <span class="badge-tag"><i class="fa-solid fa-crosshairs"></i> 5학년 온책읽기 (Firebase & Vercel)</span>
+                    <span class="badge-tag"><i class="fa-solid fa-shield-halved"></i> 5학년 온책읽기 & 번호 승인 인증</span>
                     <h1 class="logo-title">BATTLE <span class="highlight">READING</span> GROUND</h1>
-                    <p class="logo-subtitle">책을 파밍하고 타이핑 감상문으로 보급상자를 획득하라!</p>
+                    <p class="logo-subtitle">로그인 후 본인 번호를 승인받아 스티커와 감상문을 작성하세요!</p>
                 </div>
                 <div class="header-stats">
                     <div class="stat-box">
@@ -100,12 +100,12 @@
             <section id="stickerBoardSection" class="content-section active">
                 <div class="section-header">
                     <h2><i class="fa-solid fa-book"></i> 우리 학급 온책읽기 스티커 현황판</h2>
-                    <p class="section-desc">도서를 완독한 후 번호 칸을 클릭하여 <b>[단순 완독]</b> 또는 <b>[독서감상문 직접 타이핑 작성]</b>을 진행하세요!</p>
+                    <p class="section-desc">🔒 **로그인 후 본인 학급 번호로 승인**받은 학생만 자신의 스티커를 부착할 수 있습니다.</p>
                 </div>
 
-                <!-- Current Logged In Notice -->
+                <!-- Current Logged In Notice & Approval Status -->
                 <div class="user-active-notice" id="userActiveNotice">
-                    <i class="fa-solid fa-circle-user"></i> 현재 <b><span id="activeUserNameDisplay">1번 학생 (익명 계정)</span></b>(으)로 로그인되어 있습니다. (상단에서 Google/익명 로그인 전환 가능)
+                    <!-- Dynamic Notice -->
                 </div>
 
                 <!-- Legend Filter Bar -->
@@ -147,7 +147,7 @@
                     <div class="my-profile-left">
                         <div class="my-avatar" id="myJournalAvatar">1</div>
                         <div class="my-info">
-                            <h3 id="myJournalName">1번 학생</h3>
+                            <h3 id="myJournalName">학생 미승인</h3>
                             <div class="tier-pill chicken" id="myJournalTier">브론즈 생존자</div>
                         </div>
                     </div>
@@ -223,8 +223,8 @@
             <!-- 4. 22명 명단 및 학생 관리 Section -->
             <section id="studentRosterSection" class="content-section">
                 <div class="section-header">
-                    <h2><i class="fa-solid fa-id-card"></i> 학급 22명 학생 명단 및 개인 독서기록장 전환</h2>
-                    <p class="section-desc">학생 카드를 클릭하면 해당 학생으로 로그인되어 독서기록장을 볼 수 있습니다.</p>
+                    <h2><i class="fa-solid fa-id-card"></i> 학급 22명 학생 명단 관리</h2>
+                    <p class="section-desc">선생님 또는 학생 명단을 확인하고 이름을 변경합니다.</p>
                 </div>
                 
                 <div class="roster-grid" id="rosterGrid">
@@ -278,6 +278,29 @@
             </section>
 
         </main>
+    </div>
+
+    <!-- Modal: Student Number Approval Modal -->
+    <div class="modal" id="numberApprovalModal">
+        <div class="modal-content text-center">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header-icon" style="color:var(--primary-yellow)"><i class="fa-solid fa-user-check"></i></div>
+            <h3>내 학급 번호 승인받기</h3>
+            <p class="modal-subtitle">1번부터 22번 중 본인의 학급 번호를 선택하여 승인받으세요.</p>
+            
+            <div class="form-group" style="margin-top:20px;">
+                <label for="selectStudentNum">학급 번호 및 이름 선택 *</label>
+                <select id="selectStudentNum" style="width:100%; padding:12px; background:rgba(0,0,0,0.5); border:1px solid var(--border-color); color:#fff; border-radius:8px; font-size:1rem; outline:none;">
+                    <!-- Dynamic 1~22 option -->
+                </select>
+            </div>
+
+            <div class="form-actions" style="margin-top:20px; justify-content:center;">
+                <button class="action-btn primary" id="confirmApproveBtn" style="width:100%; justify-content:center;">
+                    <i class="fa-solid fa-check-circle"></i> 내 번호로 승인 완료하기
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal: Sticker Select Modal -->
